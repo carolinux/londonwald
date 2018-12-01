@@ -1,8 +1,8 @@
 import os
 import struct
-import subprocess
 
-from osgeo import gdal
+
+from osgeo import gdal, osr
 import psycopg2
 from psycopg2.extras import execute_values
 
@@ -14,23 +14,37 @@ MAX_X = 0.3340155
 MIN_Y = 51.2867602
 MAX_Y = 51.6918741
 
+TREE_COVER_DATASET_INDEX_WITHIN_HDF_FILE = 0
+
+
+def reproject_to_lonlat(source_dataset):
+    dst_srs = osr.SpatialReference()
+    dst_srs.ImportFromEPSG(4326)
+    dst_wkt = dst_srs.ExportToWkt()
+
+    error_threshold = 0.125  # error threshold --> use same value as in gdalwarp
+    resampling = gdal.GRA_NearestNeighbour
+
+    reprojected_dataset = gdal.AutoCreateWarpedVRT(source_dataset,
+                                      None,  # src_wkt : left to default value --> will use the one from source
+                                      dst_wkt,
+                                      resampling,
+                                      error_threshold)
+    return reprojected_dataset
+
 
 def process(hdf_file, target_table_name, year):
     conn_string = "dbname='londonwald' user='carolinux'"
     conn = psycopg2.connect(conn_string)
     cur = conn.cursor()
 
-    dest_tif_file = hdf_file + '.tif'
-
-    # change the projection to longitude and latitude
-    cmd = 'gdalwarp -overwrite -t_srs EPSG:4326 -dstnodata -200 -of GTiff "HDF4_EOS:EOS_GRID:\"{}\":MOD44B_250m_GRID:Percent_Tree_Cover" {}'.format(
-        hdf_file, dest_tif_file)
-    subprocess.call(cmd, shell=True)
-
     # extract box coordinates for every 250x250m tree covered box
-    dataset = gdal.Open(dest_tif_file)
-    geotransform = dataset.GetGeoTransform()
-    band = dataset.GetRasterBand(1)
+    hdf_dataset = gdal.Open(hdf_file)
+    tree_cover_dataset_name = hdf_dataset.GetSubDatasets()[TREE_COVER_DATASET_INDEX_WITHIN_HDF_FILE][0]
+    tree_cover_dataset = gdal.Open(tree_cover_dataset_name, gdal.GA_ReadOnly)
+    tree_cover_dataset = reproject_to_lonlat(tree_cover_dataset)
+    geotransform = tree_cover_dataset.GetGeoTransform()
+    band = tree_cover_dataset.GetRasterBand(1)
     band_types_map = {'Byte': 'B', 'UInt16': 'H', 'Int16': 'h', 'UInt32': 'I',
                       'Int32': 'i', 'Float32': 'f', 'Float64': 'd'}
     band_type = gdal.GetDataTypeName(band.DataType)
@@ -49,7 +63,6 @@ def process(hdf_file, target_table_name, year):
         scanline = band.ReadRaster(0, y, band.XSize, 1, band.XSize, 1, band.DataType)
         tree_cover_values = struct.unpack(band_types_map[band_type] * band.XSize, scanline)
         tuples = []
-
 
         for j, tree_cover_value in enumerate(tree_cover_values):
 
@@ -119,10 +132,11 @@ CREATE INDEX IF NOT EXISTS {}_geom_idx
 
 
 if __name__ == '__main__':
-    create_table_for_forest_boxes('forest_boxes')
+    forest_boxes_table_name = 'forest_boxes2'
+    create_table_for_forest_boxes(forest_boxes_table_name)
     for fn in os.listdir('./data'):
         if not fn.endswith('hdf'):
             continue
         hdf_file = os.path.join('data', fn)
         year_captured = extract_date_captured_from_hdf_file(hdf_file)
-        process(hdf_file, 'forest_boxes', year_captured)
+        process(hdf_file, forest_boxes_table_name, year_captured)
