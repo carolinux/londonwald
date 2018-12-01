@@ -20,8 +20,6 @@ def process(hdf_file, target_table_name, year):
     conn = psycopg2.connect(conn_string)
     cur = conn.cursor()
 
-    # extract year from metadata
-
     dest_tif_file = hdf_file + '.tif'
 
     # change the projection to longitude and latitude
