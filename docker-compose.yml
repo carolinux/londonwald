@@ -1,0 +1,18 @@
+version: '3'
+services:
+  postgres:
+    image: kartoza/postgis:10.0-2.4
+    environment:
+      - POSTGRES_USER=carolinux
+      - POSTGRES_PASS=''
+      - POSTGRES_DBNAME=londonwald
+
+  python3:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - .:/usr/src
+    tty: true
+    links:
+      - postgres
