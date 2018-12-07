@@ -4,15 +4,20 @@ services:
     image: kartoza/postgis:10.0-2.4
     environment:
       - POSTGRES_USER=carolinux
-      - POSTGRES_PASS=''
+      - POSTGRES_PASS=ilikeforests
       - POSTGRES_DBNAME=londonwald
 
-  python3:
+  python3-container:
     build:
       context: ./
       dockerfile: Dockerfile
     volumes:
       - .:/usr/src
+    environment:
+      - PGHOST=postgres
+      - PGUSER=carolinux
+      - PGDATABASE=londonwald
+      - PGPASSWORD=ilikeforests
     tty: true
     links:
       - postgres

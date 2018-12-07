@@ -2,7 +2,7 @@ FROM  python:3.6
 
 RUN apt-get update \
     && apt-get install -y \
-         python3-gdal libpq-dev libgdal-dev gdal-bin
+         python3-gdal libgdal-dev gdal-bin libpq-dev postgresql-client
 
 ENV LANG=C.UTF-8
 

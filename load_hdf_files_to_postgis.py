@@ -68,7 +68,7 @@ def load_hdf_file_to_postgis_db(hdf_file, target_table_name, year):
 
 
 def get_pg_connection_and_cursor():
-    conn_string = "dbname='londonwald' user='carolinux'"
+    conn_string = "dbname='londonwald' user='carolinux' host='postgres' password='ilikeforests'"
     conn = psycopg2.connect(conn_string)
     cur = conn.cursor()
     return conn, cur
@@ -142,11 +142,14 @@ def create_table_for_forest_boxes(target_table_name):
 
 
 if __name__ == '__main__':
-    forest_boxes_table_name = 'forest_boxes3'
+    forest_boxes_table_name = 'forest_boxes'
+    print("Creating table")
     create_table_for_forest_boxes(forest_boxes_table_name)
     for fn in os.listdir(HDF_FOLDER):
         if not fn.endswith('hdf'):
             continue
+        print("Processing file {}".format(fn))
         hdf_file = os.path.join(HDF_FOLDER, fn)
         year_captured = extract_date_captured_from_hdf_file(hdf_file)
         load_hdf_file_to_postgis_db(hdf_file, forest_boxes_table_name, year_captured)
+    print("All done. Run 'psql' to connect to the db from here!")
