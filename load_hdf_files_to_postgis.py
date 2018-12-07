@@ -153,3 +153,4 @@ if __name__ == '__main__':
         year_captured = extract_date_captured_from_hdf_file(hdf_file)
         load_hdf_file_to_postgis_db(hdf_file, forest_boxes_table_name, year_captured)
     print("All done. Run 'psql' to connect to the db from here!")
+    print("Example SQL query: SELECT COUNT(*) from forest_boxes")
